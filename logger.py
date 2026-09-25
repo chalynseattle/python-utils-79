@@ -1,30 +1,35 @@
 import logging
-from logging.handlers import RotatingFileHandler
 import os
+from logging.handlers import RotatingFileHandler
 
-def setup_logger(name='app_logger', log_file='app.log', level=logging.INFO):
-    """Configures a rotating file logger for the application."""
+def setup_logger(name: str, log_file: str, level: int = logging.INFO) -> logging.Logger:
+    """Initializes a rotating file logger instance."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    # Prevent duplicate handlers if setup is called multiple times
+    # Ensure directory exists
+    log_dir = os.path.dirname(log_file)
+    if log_dir and not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
+    # Setup rotating handler: 5MB per file, max 3 backups
+    handler = RotatingFileHandler(
+        log_file, 
+        maxBytes=5*1024*1024, 
+        backupCount=3
+    )
+
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    handler.setFormatter(formatter)
+
     if not logger.handlers:
-        # 5MB per file, keep 3 backup files
-        handler = RotatingFileHandler(
-            log_file, 
-            maxBytes=5 * 1024 * 1024, 
-            backupCount=3
-        )
-        
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        handler.setFormatter(formatter)
         logger.addHandler(handler)
-        
-        # Add console output for visibility
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
 
     return logger
+
+if __name__ == '__main__':
+    # Usage example for the project
+    app_logger = setup_logger('app_logger', 'logs/app.log')
+    app_logger.info('Logger initialized successfully')
