@@ -1,33 +1,30 @@
-import re
-def is_valid_input(item):
-    """Check if input is valid: non-empty str, alnum+space, 1-50 chars."""
-    if not isinstance(item, str):
-        return False
-    item = item.strip()
-    if not item or len(item) > 50:
-        return False
-    if not re.match(r'^[a-zA-Z0-9\s]+$', item):
-        return False
+import logging
+
+logger = logging.getLogger(__name__)
+
+def validate_input(data):
+    """Ensures input is a non-empty dictionary."""
+    if not isinstance(data, dict):
+        raise ValueError("Input must be a dictionary")
+    if not data:
+        raise ValueError("Input data cannot be empty")
     return True
 
-def process_item(item):
-    """Process valid item: return uppercased version."""
-    return item.strip().upper()
-
-def main_processing_loop(inputs):
-    """Main loop: validate each input then process if valid."""
+def process_items(items):
+    """Main processing loop with validation."""
     results = []
-    for raw in inputs:
-        if is_valid_input(raw):
-            processed = process_item(raw)
-            results.append(processed)
-            print("Processed:", processed)
-        else:
-            print("Skipped invalid:", raw)
+    for item in items:
+        try:
+            if validate_input(item):
+                # Simulate core processing logic
+                processed = {k: str(v).upper() for k, v in item.items()}
+                results.append(processed)
+        except (ValueError, TypeError) as e:
+            logger.error(f"Skipping invalid item {item}: {e}")
+            continue
     return results
 
 if __name__ == "__main__":
-    test_inputs = ["hello", "world123", "bad@input", "valid entry", "x"*60, ""]
-    print("Running main processing loop with validation")
-    output = main_processing_loop(test_inputs)
-    print("Done. Results count:", len(output))
+    data_batch = [{"id": 1, "val": "a"}, {}, "invalid", {"id": 2, "val": "b"}]
+    output = process_items(data_batch)
+    print(f"Processed {len(output)} items successfully.")
