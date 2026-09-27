@@ -1,31 +1,40 @@
-import time
-import functools
+import json
 import logging
-from typing import Callable, Any, Type
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
-def retry_on_network_failure(retries: int = 3, delay: float = 1.0, exceptions: tuple = (ConnectionError, TimeoutError)) -> Callable:
-    """Decorator for retrying network-bound functions."""
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_exception = None
-            for attempt in range(retries):
-                try:
-                    return func(*args, **kwargs)
-                except exceptions as e:
-                    last_exception = e
-                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay}s...")
-                    time.sleep(delay)
-            
-            logger.error(f"All {retries} attempts exhausted.")
-            raise last_exception
-        return wrapper
-    return decorator
+def safe_load_json(file_path: str) -> Dict[str, Any]:
+    """Load and parse JSON file with error handling."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.error(f"failed to load json from {file_path}: {e}")
+        return {}
 
-@retry_on_network_failure(retries=3, delay=2.0)
-def fetch_data(url: str) -> str:
-    """Example network operation function."""
-    # Simulating actual network call logic
-    return f"data from {url}"
+def flatten_dict(d: Dict[str, Any], parent_key: str = '', sep: str = '_') -> Dict[str, Any]:
+    """Flatten nested dictionary structure."""
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+def get_nested(data: Dict[str, Any], path: str, default: Any = None) -> Any:
+    """Access nested dictionary keys using dot notation."""
+    keys = path.split('.')
+    for key in keys:
+        if isinstance(data, dict):
+            data = data.get(key, default)
+        else:
+            return default
+    return data
+
+def chunk_list(data: list, size: int):
+    """Split list into chunks of specific size."""
+    for i in range(0, len(data), size):
+        yield data[i:i + size]
