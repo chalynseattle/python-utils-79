@@ -1,31 +1,31 @@
-import json
+import time
+import functools
+import logging
+from typing import Callable, Any, Type
 
-class InputError(Exception):
-    pass
+logger = logging.getLogger(__name__)
 
-class DataProcessor:
-    def __init__(self, data):
-        self.data = data
+def retry_on_network_failure(retries: int = 3, delay: float = 1.0, exceptions: tuple = (ConnectionError, TimeoutError)) -> Callable:
+    """Decorator for retrying network-bound functions."""
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            last_exception = None
+            for attempt in range(retries):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    last_exception = e
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay}s...")
+                    time.sleep(delay)
+            
+            logger.error(f"All {retries} attempts exhausted.")
+            raise last_exception
+        return wrapper
+    return decorator
 
-    def validate_input(self):
-        if not isinstance(self.data, dict):
-            raise InputError('Input must be a dictionary')
-        if 'name' not in self.data or 'value' not in self.data:
-            raise InputError('Missing required fields: name and value')
-        if not isinstance(self.data['value'], (int, float)):
-            raise InputError('Value must be a number')
-
-    def process_data(self):
-        self.validate_input()
-        # Simulate processing data
-        result = {'processed_value': self.data['value'] * 2}
-        return result
-
-if __name__ == '__main__':
-    input_data = json.loads('{"name": "example", "value": 10}')
-    processor = DataProcessor(input_data)
-    try:
-        output = processor.process_data()
-        print(json.dumps(output))
-    except InputError as e:
-        print(f'Input error: {e}')
+@retry_on_network_failure(retries=3, delay=2.0)
+def fetch_data(url: str) -> str:
+    """Example network operation function."""
+    # Simulating actual network call logic
+    return f"data from {url}"
