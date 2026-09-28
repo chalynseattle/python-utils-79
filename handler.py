@@ -1,42 +1,41 @@
-import logging
-import os
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
-logger = logging.getLogger(__name__)
+class RequestHandler:
+    """Handles incoming request data and dispatching."""
 
-class DataHandler:
-    """Manages data processing and cleanup cycles."""
-    def __init__(self, directory: str = "./data"):
-        self.directory = directory
-        if not os.path.exists(self.directory):
-            os.makedirs(self.directory)
+    def __init__(self, routes: Dict[str, Callable[[Any], Any]]) -> None:
+        self._routes: Dict[str, Callable[[Any], Any]] = routes
 
-    def process_payload(self, data: Dict[str, Any]) -> bool:
-        """Validates and saves payload to storage."""
-        try:
-            if not data or "id" not in data:
-                return False
-            
-            filepath = os.path.join(self.directory, f"{data['id']}.json")
-            with open(filepath, "w") as f:
-                import json
-                json.dump(data, f)
-            return True
-        except (IOError, TypeError) as e:
-            logger.error(f"failed to process payload: {e}")
-            return False
+    def handle(self, path: str, data: Any) -> Optional[Any]:
+        """
+        Dispatches request to appropriate route handler.
 
-    def purge_old_data(self, max_files: int = 100) -> int:
-        """Removes excess files from the storage directory."""
-        files = sorted(
-            [os.path.join(self.directory, f) for f in os.listdir(self.directory)],
-            key=os.path.getmtime
-        )
+        Args:
+            path: URL path to match.
+            data: Data payload to process.
 
-        deleted_count = 0
-        while len(files) > max_files:
-            file_to_remove = files.pop(0)
-            os.remove(file_to_remove)
-            deleted_count += 1
-        
-        return deleted_count
+        Returns:
+            Processed response or None if no route found.
+        """
+        handler = self._routes.get(path)
+        if handler:
+            return handler(data)
+        return None
+
+def create_response(status: int, body: str) -> Dict[str, Any]:
+    """
+    Formats response structure for client return.
+
+    Args:
+        status: HTTP status code.
+        body: Content string.
+
+    Returns:
+        Dictionary containing status and body.
+    """
+    return {"status": status, "body": body}
+
+if __name__ == "__main__":
+    routes = {"/ping": lambda x: "pong"}
+    handler = RequestHandler(routes)
+    print(handler.handle("/ping", None))
