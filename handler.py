@@ -1,44 +1,33 @@
-import logging
+import functools
+import time
+from typing import Callable, Any, Dict
 
-# Configure logger for module tracking
-logger = logging.getLogger(__name__)
+# Cache for performance optimization of expensive operations
+_memoization_cache: Dict[tuple, Any] = {}
 
-def validate_input(data):
-    """Ensures input is a non-empty dictionary with required keys."""
-    if not isinstance(data, dict):
-        return False
-    if 'task_id' not in data or 'payload' not in data:
-        return False
-    return True
+def memoize(func: Callable) -> Callable:
+    """Cache results of function calls to minimize overhead."""
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _memoization_cache:
+            _memoization_cache[key] = func(*args, **kwargs)
+        return _memoization_cache[key]
+    return wrapper
 
-def process_items(items):
-    """
-    Main processing loop with integrated input validation.
-    Processes a list of items and skips malformed records.
-    """
-    results = []
-    for index, item in enumerate(items):
-        if not validate_input(item):
-            logger.warning(f"Skipping malformed input at index {index}")
-            continue
-        
-        try:
-            # Simulate core processing logic
-            processed_val = str(item['payload']).upper()
-            results.append({
-                "id": item['task_id'],
-                "data": processed_val
-            })
-        except Exception as e:
-            logger.error(f"Processing error at index {index}: {e}")
-            
-    return results
+class DataHandler:
+    """Efficient data processing interface with cached lookups."""
+    def __init__(self, data_source: dict):
+        self._data = data_source
 
-if __name__ == "__main__":
-    data_stream = [
-        {"task_id": 1, "payload": "hello"},
-        {"invalid": "data"},
-        {"task_id": 2, "payload": "world"}
-    ]
-    processed = process_items(data_stream)
-    print(f"Final output count: {len(processed)}")
+    @memoize
+    def get_processed_value(self, key: str) -> Any:
+        """Retrieve and calculate value with memoized caching."""
+        raw_val = self._data.get(key, 0)
+        # Simulate complex transformation
+        time.sleep(0.1)
+        return raw_val * 1.05
+
+def batch_process(items: list, handler: DataHandler) -> list:
+    """Optimized batch execution flow."""
+    return [handler.get_processed_value(item) for item in items]
