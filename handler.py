@@ -1,41 +1,44 @@
-from typing import Any, Callable, Dict, Optional
+import logging
 
-class RequestHandler:
-    """Handles incoming request data and dispatching."""
+# Configure logger for module tracking
+logger = logging.getLogger(__name__)
 
-    def __init__(self, routes: Dict[str, Callable[[Any], Any]]) -> None:
-        self._routes: Dict[str, Callable[[Any], Any]] = routes
+def validate_input(data):
+    """Ensures input is a non-empty dictionary with required keys."""
+    if not isinstance(data, dict):
+        return False
+    if 'task_id' not in data or 'payload' not in data:
+        return False
+    return True
 
-    def handle(self, path: str, data: Any) -> Optional[Any]:
-        """
-        Dispatches request to appropriate route handler.
-
-        Args:
-            path: URL path to match.
-            data: Data payload to process.
-
-        Returns:
-            Processed response or None if no route found.
-        """
-        handler = self._routes.get(path)
-        if handler:
-            return handler(data)
-        return None
-
-def create_response(status: int, body: str) -> Dict[str, Any]:
+def process_items(items):
     """
-    Formats response structure for client return.
-
-    Args:
-        status: HTTP status code.
-        body: Content string.
-
-    Returns:
-        Dictionary containing status and body.
+    Main processing loop with integrated input validation.
+    Processes a list of items and skips malformed records.
     """
-    return {"status": status, "body": body}
+    results = []
+    for index, item in enumerate(items):
+        if not validate_input(item):
+            logger.warning(f"Skipping malformed input at index {index}")
+            continue
+        
+        try:
+            # Simulate core processing logic
+            processed_val = str(item['payload']).upper()
+            results.append({
+                "id": item['task_id'],
+                "data": processed_val
+            })
+        except Exception as e:
+            logger.error(f"Processing error at index {index}: {e}")
+            
+    return results
 
 if __name__ == "__main__":
-    routes = {"/ping": lambda x: "pong"}
-    handler = RequestHandler(routes)
-    print(handler.handle("/ping", None))
+    data_stream = [
+        {"task_id": 1, "payload": "hello"},
+        {"invalid": "data"},
+        {"task_id": 2, "payload": "world"}
+    ]
+    processed = process_items(data_stream)
+    print(f"Final output count: {len(processed)}")
