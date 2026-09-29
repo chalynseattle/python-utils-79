@@ -2,31 +2,28 @@ import json
 import os
 from typing import Any, Dict
 
-class ConfigLoader:
-    """Handles configuration loading from JSON with fallback defaults."""
+def load_config(filepath: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
+    """Loads JSON config file and merges with provided defaults."""
+    config = defaults.copy()
     
-    def __init__(self, default_config: Dict[str, Any]):
-        self.defaults = default_config
-        self.config = default_config.copy()
+    if not os.path.exists(filepath):
+        return config
 
-    def load_from_file(self, filepath: str) -> None:
-        """Updates config with data from a JSON file."""
-        if not os.path.exists(filepath):
-            return
-        
-        try:
-            with open(filepath, 'r') as f:
-                file_data = json.load(f)
-                self.config.update(file_data)
-        except (json.JSONDecodeError, IOError):
-            pass
+    try:
+        with open(filepath, 'r') as f:
+            user_data = json.load(f)
+            if isinstance(user_data, dict):
+                config.update(user_data)
+    except (json.JSONDecodeError, IOError):
+        pass
 
-    def get(self, key: str, default: Any = None) -> Any:
-        """Retrieves value or returns provided/internal default."""
-        return self.config.get(key, default if default is not None else self.defaults.get(key))
+    return config
 
-def get_config(filepath: str, defaults: Dict[str, Any]) -> ConfigLoader:
-    """Factory function for creating a populated loader."""
-    loader = ConfigLoader(defaults)
-    loader.load_from_file(filepath)
-    return loader
+def save_config(filepath: str, config: Dict[str, Any]) -> None:
+    """Persists configuration dictionary to a JSON file."""
+    with open(filepath, 'w') as f:
+        json.dump(config, f, indent=4)
+
+# Example usage:
+# defaults = {"host": "localhost", "port": 8080}
+# cfg = load_config("config.json", defaults)
