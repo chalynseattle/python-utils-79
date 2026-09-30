@@ -1,32 +1,30 @@
-import collections.abc
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
-def deep_flatten(items: Any) -> List[Any]:
-    """Recursively flatten nested lists or tuples into a single list."""
-    flat = []
-    for item in items:
-        if isinstance(item, (list, tuple)):
-            flat.extend(deep_flatten(item))
+def merge_configs(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively merge two dictionaries for configuration management."""
+    merged = base.copy()
+    for key, value in override.items():
+        if isinstance(value, dict) and key in merged and isinstance(merged[key], dict):
+            merged[key] = merge_configs(merged[key], value)
         else:
-            flat.append(item)
-    return flat
+            merged[key] = value
+    return merged
 
-def merge_dicts(dict1: Dict, dict2: Dict, deep: bool = False) -> Dict:
-    """Merge two dictionaries; optional recursive merge for nested keys."""
-    result = dict1.copy()
-    for key, value in dict2.items():
-        if deep and key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = merge_dicts(result[key], value, deep=True)
-        else:
-            result[key] = value
-    return result
+def format_data_list(data: List[Any], prefix: str = "Item") -> List[str]:
+    """Convert list items to strings with prefixed numbering."""
+    return [f"{prefix} {i+1}: {str(item)}" for i, item in enumerate(data)]
 
-def filter_none(data: Dict) -> Dict:
-    """Remove all keys with None values from a dictionary."""
-    return {k: v for k, v in data.items() if v is not None}
+def filter_by_type(items: List[Any], target_type: type) -> List[Any]:
+    """Extract items matching a specific type from a list."""
+    return [item for item in items if isinstance(item, target_type)]
 
-def chunk_list(items: List[Any], size: int) -> List[List[Any]]:
-    """Split a list into smaller chunks of a specified size."""
-    if size <= 0:
-        raise ValueError("Chunk size must be a positive integer")
-    return [items[i:i + size] for i in range(0, len(items), size)]
+class DataProcessor:
+    """Utility class for standardizing input data formats."""
+    def __init__(self, debug: bool = False) -> None:
+        self.debug = debug
+
+    def process(self, payload: Union[str, int]) -> str:
+        """Sanitize and convert input to a standardized string."""
+        if self.debug:
+            print(f"Processing: {payload}")
+        return str(payload).strip().lower()
