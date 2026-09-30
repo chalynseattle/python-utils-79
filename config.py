@@ -3,7 +3,7 @@ import os
 from typing import Any, Dict
 
 def load_config(filepath: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
-    """Loads JSON config file and merges with provided defaults."""
+    """Loads configuration from a JSON file with fallback defaults."""
     config = defaults.copy()
     
     if not os.path.exists(filepath):
@@ -11,19 +11,22 @@ def load_config(filepath: str, defaults: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         with open(filepath, 'r') as f:
-            user_data = json.load(f)
-            if isinstance(user_data, dict):
-                config.update(user_data)
+            data = json.load(f)
+            if isinstance(data, dict):
+                config.update(data)
     except (json.JSONDecodeError, IOError):
         pass
-
+        
     return config
 
-def save_config(filepath: str, config: Dict[str, Any]) -> None:
-    """Persists configuration dictionary to a JSON file."""
-    with open(filepath, 'w') as f:
-        json.dump(config, f, indent=4)
-
-# Example usage:
-# defaults = {"host": "localhost", "port": 8080}
-# cfg = load_config("config.json", defaults)
+if __name__ == '__main__':
+    # Example usage
+    default_settings = {
+        "host": "localhost",
+        "port": 8080,
+        "debug": False
+    }
+    
+    # Attempt to load from local file, merge with defaults
+    active_config = load_config("settings.json", default_settings)
+    print(f"Config loaded: {active_config}")
