@@ -1,28 +1,31 @@
+import time
+import functools
 import logging
 
-def validate_payload(data):
-    """Ensures input data conforms to expected schema."""
-    required_fields = ['id', 'payload', 'timestamp']
-    if not isinstance(data, dict):
-        raise ValueError("input must be a dictionary")
-    for field in required_fields:
-        if field not in data:
-            raise KeyError(f"missing required field: {field}")
-    if not isinstance(data['id'], int):
-        raise TypeError("id field must be an integer")
-    return True
+logger = logging.getLogger(__name__)
 
-def process_main_loop(items):
-    """Main processing loop with integrated input validation."""
-    logger = logging.getLogger(__name__)
-    results = []
-    for item in items:
-        try:
-            if validate_payload(item):
-                # Simulate core processing logic
-                processed = item['payload'].upper()
-                results.append(processed)
-        except (ValueError, KeyError, TypeError) as e:
-            logger.error(f"skipping malformed item: {e}")
-            continue
-    return results
+def retry(max_attempts=3, delay=1.0, exceptions=(Exception,)): 
+    """Decorator to retry a function if it raises specified exceptions."""
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            attempts = 0
+            while attempts < max_attempts:
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    attempts += 1
+                    if attempts >= max_attempts:
+                        logger.error(f"Final attempt {attempts} failed for {func.__name__}")
+                        raise
+                    
+                    logger.warning(f"Attempt {attempts} failed, retrying in {delay}s: {e}")
+                    time.sleep(delay)
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+def fetch_with_retry(func, *args, **kwargs):
+    """Functional wrapper for network-bound operations with retry logic."""
+    retry_logic = retry(max_attempts=3, delay=2.0)(func)
+    return retry_logic(*args, **kwargs)
