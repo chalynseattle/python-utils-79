@@ -1,43 +1,34 @@
 import logging
 import sys
-from typing import Optional, Union
+from typing import Optional
 
-def configure_logger(
-    name: str,
-    level: Union[int, str] = logging.INFO,
-    log_file: Optional[str] = None,
-    console: bool = True
-) -> logging.Logger:
-    """
-    Configure and return a custom logger with console and file options.
+class AppLogger:
+    """Standardized logging utility for python-utils-79"""
+    
+    def __init__(self, name: str, level: int = logging.INFO):
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(level)
+        self._setup_handler()
 
-    Args:
-        name: Name of the logger.
-        level: Logging level as an integer or string (e.g. "INFO", logging.DEBUG).
-        log_file: Optional file path to write logs to.
-        console: Whether to log messages to the console (sys.stdout).
+    def _setup_handler(self) -> None:
+        if not self.logger.handlers:
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
 
-    Returns:
-        A configured Logger instance.
-    """
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
+    def info(self, msg: str) -> None:
+        self.logger.info(msg)
 
-    # Clear existing handlers to prevent duplicate messages
-    if logger.hasHandlers():
-        logger.handlers.clear()
+    def error(self, msg: str, exc_info: bool = False) -> None:
+        self.logger.error(msg, exc_info=exc_info)
 
-    log_format = "%(asctime)s - %(name)s - [%(levelname)s] - %(message)s"
-    formatter = logging.Formatter(log_format)
+    @classmethod
+    def get_logger(cls, name: str = "python-utils-79") -> logging.Logger:
+        return cls(name).logger
 
-    if console:
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
-
-    if log_file:
-        file_handler = logging.FileHandler(log_file, encoding="utf-8")
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-
-    return logger
+def get_configured_logger(name: str) -> logging.Logger:
+    """Factory function for consistent module logging"""
+    return AppLogger.get_logger(name)
