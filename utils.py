@@ -1,37 +1,41 @@
-import logging
-from typing import Any, Optional, Callable
+import os
+import shutil
+from pathlib import Path
+from typing import Union, List
 
-logger = logging.getLogger(__name__)
+def cleanup_directory(path: Union[str, Path], extension: str = None) -> int:
+    """Removes files from directory optionally filtered by extension."""
+    target_dir = Path(path)
+    if not target_dir.exists():
+        return 0
 
-def safe_execute(func: Callable, *args: Any, default: Any = None, **kwargs: Any) -> Any:
-    """Execute a function with robust error handling for common edge cases."""
-    try:
-        if not callable(func):
-            raise ValueError("Provided object is not callable")
-        return func(*args, **kwargs)
-    except (ValueError, TypeError, AttributeError) as e:
-        logger.error(f"Invalid operation detected: {e}")
-    except Exception as e:
-        logger.critical(f"Unexpected runtime failure: {e}")
-    return default
+    count = 0
+    for item in target_dir.iterdir():
+        if item.is_file():
+            if extension is None or item.suffix == extension:
+                item.unlink()
+                count += 1
+    return count
 
-def parse_int_safe(value: Any, default: int = 0) -> int:
-    """Convert input to integer with fallback for non-numeric types."""
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return default
+def reorganize_files(source: str, target: str, mapping: dict) -> None:
+    """Moves files into subdirectories based on extension mapping."""
+    src_path = Path(source)
+    dst_path = Path(target)
+    dst_path.mkdir(parents=True, exist_ok=True)
 
-def get_nested_key(data: dict, path: str, delimiter: str = ".") -> Optional[Any]:
-    """Retrieve value from nested dictionary using dot notation path."""
-    if not isinstance(data, dict):
-        return None
-    
-    keys = path.split(delimiter)
-    current = data
-    try:
-        for key in keys:
-            current = current[key]
-        return current
-    except (KeyError, TypeError):
-        return None
+    for file_path in src_path.iterdir():
+        if file_path.is_file() and file_path.suffix in mapping:
+            subdir = dst_path / mapping[file_path.suffix]
+            subdir.mkdir(exist_ok=True)
+            shutil.move(str(file_path), str(subdir / file_path.name))
+
+def get_disk_usage(path: str) -> dict:
+    """Calculates total files and size of directory."""
+    total_size = 0
+    count = 0
+    for root, _, files in os.walk(path):
+        for f in files:
+            fp = os.path.join(root, f)
+            total_size += os.path.getsize(fp)
+            count += 1
+    return {"files": count, "bytes": total_size}
