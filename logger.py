@@ -1,34 +1,37 @@
 import logging
 import sys
-from typing import Optional
 
-class AppLogger:
-    """Standardized logging utility for python-utils-79"""
+def setup_logger(name: str):
+    logger = logging.getLogger(name)
+    handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    return logger
+
+def process_data(data_stream):
+    logger = setup_logger('processor')
     
-    def __init__(self, name: str, level: int = logging.INFO):
-        self.logger = logging.getLogger(name)
-        self.logger.setLevel(level)
-        self._setup_handler()
+    for entry in data_stream:
+        # Validate input structure
+        if not isinstance(entry, dict) or 'id' not in entry:
+            logger.error(f'invalid input format received: {entry}')
+            continue
+            
+        # Validate specific value constraints
+        value = entry.get('value')
+        if not isinstance(value, (int, float)) or value < 0:
+            logger.warning(f'skipping invalid numeric value: {value}')
+            continue
+            
+        try:
+            # Process valid entry
+            processed = value * 2
+            logger.info(f'processed item {entry["id"]}: {processed}')
+        except Exception as e:
+            logger.exception(f'unexpected error during processing: {e}')
 
-    def _setup_handler(self) -> None:
-        if not self.logger.handlers:
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            )
-            handler = logging.StreamHandler(sys.stdout)
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
-
-    def info(self, msg: str) -> None:
-        self.logger.info(msg)
-
-    def error(self, msg: str, exc_info: bool = False) -> None:
-        self.logger.error(msg, exc_info=exc_info)
-
-    @classmethod
-    def get_logger(cls, name: str = "python-utils-79") -> logging.Logger:
-        return cls(name).logger
-
-def get_configured_logger(name: str) -> logging.Logger:
-    """Factory function for consistent module logging"""
-    return AppLogger.get_logger(name)
+if __name__ == '__main__':
+    sample_data = [{'id': 1, 'value': 10}, {'id': 2, 'value': -5}, 'bad_data', {'id': 3, 'value': 20}]
+    process_data(sample_data)
