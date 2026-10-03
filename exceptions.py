@@ -1,50 +1,29 @@
-import datetime
-from typing import Any, Dict, Optional
+class DataError(Exception):
+    """Base exception for data processing errors."""
+    pass
 
+class ValidationError(DataError):
+    """Raised when data fails validation criteria."""
+    pass
 
-class BaseUtilsError(Exception):
-    """Base exception class for python-utils-79 with context tracking for edge cases."""
-
-    def __init__(
-        self, message: str, context: Optional[Dict[str, Any]] = None
-    ) -> None:
+class ProcessingError(DataError):
+    """Raised when data transformation fails."""
+    def __init__(self, message, original_exception=None):
         super().__init__(message)
-        self.message = message
-        self.timestamp = datetime.datetime.now(datetime.timezone.utc)
-        self.context = context or {}
+        self.original_exception = original_exception
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Serializes the error and its context for structured logging or API responses."""
-        return {
-            "error_type": self.__class__.__name__,
-            "message": self.message,
-            "timestamp": self.timestamp.isoformat(),
-            "context": self.context,
-        }
+class DataHandlerException(DataError):
+    """Raised when handler state is invalid."""
+    pass
 
-    def __str__(self) -> str:
-        if self.context:
-            return f"{self.message} (Context: {self.context})"
-        return self.message
+def raise_if_invalid(data: dict, schema: list):
+    """Validates that all required keys are present in data."""
+    missing = [key for key in schema if key not in data]
+    if missing:
+        raise ValidationError(f"Missing required fields: {', '.join(missing)}")
 
-
-class ValidationError(BaseUtilsError):
-    """Raised when data validation fails during utility operations."""
-
-
-class ConfigurationError(BaseUtilsError):
-    """Raised when system or environment configuration is invalid or missing."""
-
-
-class ProcessingError(BaseUtilsError):
-    """Raised when an operation fails during runtime processing."""
-
-
-def wrap_exception(
-    exc: Exception, context: Optional[Dict[str, Any]] = None
-) -> ProcessingError:
-    """Helper to wrap standard Python exceptions into context-aware ProcessingErrors."""
-    error_msg = f"Underlying exception: {type(exc).__name__} - {str(exc)}"
-    ctx = context or {}
-    ctx["original_exception"] = type(exc).__name__
-    return ProcessingError(error_msg, context=ctx)
+def handle_data_failure(e: Exception):
+    """Standard error wrapper for data operations."""
+    if isinstance(e, DataError):
+        return {"status": "error", "message": str(e)}
+    return {"status": "critical", "message": "unexpected system failure"}
